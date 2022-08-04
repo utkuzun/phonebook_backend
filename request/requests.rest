@@ -5,21 +5,26 @@ GET http://localhost:3001/api/persons
 GET http://localhost:3001/info
 
 ###
-GET http://localhost:3001/api/persons/2
+GET http://localhost:3001/api/persons/62ea87c5e20e27ed49a15ffd
 
 ###
 POST http://localhost:3001/api/persons
 Content-Type: application/json
 
 {
-    "name" : "utku",
-    "number" :"5315"
+    "name" : "hawafhsdfhsasgi",
+    "number" :"53y-4465465"
 }
 
 ###
-DELETE http://localhost:3001/api/persons/0
-
+DELETE http://localhost:3001/api/persons/62ea85a896cbabc896e1c602
 
 ###
-DELETE http://localhost:3002/people/1
+PUT http://localhost:3001/api/persons/62ea87d8e20e27ed49a16002
+Content-Type: application/json
+
+{
+    "name" : "seher",
+    "number" : 45789 
+}
 

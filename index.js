@@ -1,6 +1,16 @@
+require("dotenv").config()
 const express = require("express")
 const morgan = require('morgan')
 const cors = require("cors")
+
+const CustomAPIError = require("./errors/CustomError")
+
+const notFound = require("./middleware/notFound")
+const errorHandler = require("./middleware/errorHandler")
+
+const connectDB = require("./db/connectDB")
+const Person = require("./models/Person")
+
 
 const app = express()
 
@@ -14,92 +24,132 @@ morgan.token("reqBody", (req, res) => {
 
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :reqBody'))
 
-let notes = [
-  {
-    id: 1,
-    name: 'Arto Hellas',
-    number: '040-123456',
-  },
-  {
-    id: 2,
-    name: 'Ada Lovelace',
-    number: '39-44-5323523',
-  },
-  {
-    id: 3,
-    name: 'Dan Abramov',
-    number: '12-43-234345',
-  },
-  {
-    id: 4,
-    name: 'Mary Poppendieck',
-    number: '39-23-6423122',
-  },
-]
+app.get("/info", async (req, res, next)=> {
+  try {
+    const people = await Person.find({})
+    const resHTML = `<p>Phonebook has info for ${people.length} people</p><p>${new Date()}</p>`
+    res.send(resHTML)
 
-const generateID = () => {
-  const idList = notes.map(note => note.id)
+  } catch (error) {
+    console.log(error);
+    next(error)
+  }
+})
 
-  let id = 0
+app.get("/api/persons", async (req, res, next) => {
+  try {
+    const people = await Person.find({})
+    res.json(people)
+  } catch (error) {
+    next(error)
+  }
+})
 
-  while(idList.includes(id)) {
-    id = Math.floor(Math.random() * 10000)
+app.get('/api/persons/:id', async (req, res, next) => {
+
+  try {
+    const id = req.params.id
+    const person = await Person.findOne({_id : id})
+    if (!person) {
+      throw new CustomAPIError(`no person found with id :${id}`, 404)
+    }
+  
+    res.json(person)
+
+  } catch (error) {
+    console.log(error);
+    next(error)
   }
 
-  return id
-}
-
-app.get("/info", (req, res)=> {
-  const resHTML = `<p>Phonebook has info for ${notes.length} people</p><p>${new Date()}</p>`
-  res.send(resHTML)
 })
 
-app.get("/api/persons", (req, res) => {
-    res.json(notes)
-})
-
-app.get('/api/persons/:id', (req, res) => {
-  const id = Number(req.params.id)
-  const note = notes.find(note => note.id === id)
-
-  if (!note) {
-    res.status(404).json({error : `not found note with a ${id}`})
-    return 
-  }
-
-  res.json(note)
-})
-
-app.post("/api/persons", (req, res) => {
-  let note = req.body
-  const {name, number} = note
+app.post("/api/persons", async (req, res, next) => {
+  const { name, number } = req.body
 
   if(!name || !number) {
     res.status(400).json({error : "name or number must be include!!!"})
     return
   }
 
-  const isExists = notes.find(note => note.name.toLowerCase() === name.toLowerCase())
-
-  if (isExists) {
-    res.status(409).json({error : "name must be unique"})
-    return
+  try {
+    const oldPerson = await Person.findOne({name : name})
+    if (oldPerson) {
+      throw new CustomAPIError("name must be unique", 409)
+    }
+  
+    const person = new Person({name, number})
+    await person.save()
+    res.status(201).json(person)
+    
+  } catch (error) {
+    console.log(error)
+    next(error)
   }
 
-  const id = generateID()
-  note = {...note, id}
-  notes = [...notes, note]
-
-  res.status(201).json(note)
 
 })
 
-app.delete("/api/persons/:id",(req, res)=> {
-  const id = Number(req.params.id)
-  notes = notes.filter(note => note.id !== id)
-  res.end()
+app.delete("/api/persons/:id",async (req, res, next)=> {
+  const id = req.params.id
+
+  try {
+    const person = await Person.findOne({_id : id})
+
+    if(!person) {
+      throw new CustomAPIError(`no person found with id :${id}`, 404)
+    }
+    await person.delete()
+
+    res.end()
+  } catch (error) {
+    console.log(error)
+    next(error)
+  }
+
+
 })
 
-const PORT = process.env.PORT || 3001
+app.put("/api/persons/:id", async (req, res, next)=> {
+  const {id} = req.params
+  const {name, number} = req.body
 
-app.listen(PORT, () => console.log(`Server is running on ${PORT}`))
+  if (!name || !number) {
+    throw new CustomAPIError("name and number must be incluede", 400) 
+  }
+
+  try {
+    const person = await Person.findByIdAndUpdate({ _id: id }, req.body, {
+      new: true,
+      runValidators: true,
+    })
+
+    if (!person) {
+      throw new CustomAPIError(`no person found with id :${id}`, 404)
+    }
+
+    res.json(person)
+  } catch (error) {
+      console.log(error)
+      next(error)
+  }
+
+
+})
+
+
+app.use(notFound)
+app.use(errorHandler)
+
+const start = async () => {
+  const url = process.env.MONGODB_URI
+  const PORT = process.env.PORT || 3001
+  try {
+    await connectDB(url)
+    app.listen(PORT, () => console.log(`Server is running on ${PORT}`))
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+
+start()

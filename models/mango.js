@@ -21,7 +21,10 @@ const getAll = async () => {
         await mongoose.connect(url)
         console.log('Connected with DB!!')
         const result = await Person.find({})
-        console.log(result);
+        console.log("phonebook:");
+        result.forEach(person => {
+            console.log(`${person.name} ${person.number}`);
+        })
         await mongoose.connection.close()
     } catch (error) {
         console.log(error)
@@ -42,7 +45,7 @@ const addPerson = async () => {
         await mongoose.connection.close()
 
     } catch (error) {
-        
+        console.log(error)  
     }
 }
 
