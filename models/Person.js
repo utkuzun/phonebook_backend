@@ -1,17 +1,17 @@
 const mongoose = require('mongoose')
 
 const validateNumber = (v) => {
-  if (!v.includes("-")) {
+  if (!v.includes('-')) {
     return false
-  } 
+  }
 
-  if (v.split("-")[0].length <2 || v.split("-")[0].length > 3) {
+  if (v.split('-')[0].length <2 || v.split('-')[0].length > 3) {
     return false
   }
 
   let isNumbers = true
 
-  v.split("-").forEach(part => {
+  v.split('-').forEach(part => {
     console.log(isNaN(Number(part)))
     if (isNaN(Number(part))) {
       isNumbers = false
